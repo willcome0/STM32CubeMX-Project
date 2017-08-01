@@ -62,7 +62,19 @@ void SystemClock_Config(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
-
+void delay_ms2(int32_t nms)  
+{  
+	int32_t temp;  
+	SysTick->LOAD = 8000*nms;  
+	SysTick->VAL=0X00;//清空计数器  
+	SysTick->CTRL=0X01;//使能，减到零是无动作，采用外部时钟源  
+	do  
+	{  
+		temp=SysTick->CTRL;//读取当前倒计数值  
+	}while((temp&0x01)&&(!(temp&(1<<16))));//等待时间到达  
+	SysTick->CTRL=0x00; //关闭计数器  
+	SysTick->VAL =0X00; //清空计数器  
+}
 /* USER CODE END 0 */
 
 int main(void)
@@ -113,6 +125,30 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
+		uint8_t Forward[4] = {0x03, 0x06, 0x0C, 0x09};
+		while(1)
+		{
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_0, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_SET);
+			HAL_Delay(1);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_0, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET);
+			HAL_Delay(1);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_0, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET);
+			HAL_Delay(1);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_0, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_SET);
+			HAL_Delay(1);
+		}
 //		uint8_t ch[3];
 //		HAL_UART_Receive(&huart1, ch, 3, 11);
 //		HAL_UART_Transmit(&huart1, ch, sizeof(ch), 0xFFFF);
@@ -193,7 +229,7 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+ 
 /* USER CODE END 4 */
 
 /**

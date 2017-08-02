@@ -62,19 +62,6 @@ void SystemClock_Config(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
-void delay_ms2(int32_t nms)  
-{  
-	int32_t temp;  
-	SysTick->LOAD = 8000*nms;  
-	SysTick->VAL=0X00;//清空计数器  
-	SysTick->CTRL=0X01;//使能，减到零是无动作，采用外部时钟源  
-	do  
-	{  
-		temp=SysTick->CTRL;//读取当前倒计数值  
-	}while((temp&0x01)&&(!(temp&(1<<16))));//等待时间到达  
-	SysTick->CTRL=0x00; //关闭计数器  
-	SysTick->VAL =0X00; //清空计数器  
-}
 /* USER CODE END 0 */
 
 int main(void)
@@ -125,30 +112,26 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-		uint8_t Forward[4] = {0x03, 0x06, 0x0C, 0x09};
-		while(1)
+		uint8_t Forward[8] = {0x01, 0x03, 0x02, 0x06, 0x04, 0x0C, 0x08, 0x09};
+		for(uint8_t i=7; i>=0; i--)
 		{
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_0, GPIO_PIN_SET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_SET);
-			HAL_Delay(1);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_0, GPIO_PIN_SET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET);
-			HAL_Delay(1);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_0, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2, GPIO_PIN_SET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_RESET);
-			HAL_Delay(1);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_0, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2, GPIO_PIN_SET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3, GPIO_PIN_SET);
-			HAL_Delay(1);
+			GPIOE->BSRR = ~Forward[i];
+//			HAL_Delay(1);
+			for(uint8_t j = 0; j<=120; j++)
+				for(uint8_t k =0; k<=120; k++);
+			i = i==0?8:i;
 		}
+//		while(1)
+//		{
+//			GPIOE->BSRR = ~0x03;
+//			HAL_Delay(1);
+//			GPIOE->BSRR = ~0x06;
+//			HAL_Delay(1);
+//			GPIOE->BSRR = ~0x0C;
+//			HAL_Delay(1);
+//			GPIOE->BSRR = ~0x09;
+//			HAL_Delay(1);
+//		}
 //		uint8_t ch[3];
 //		HAL_UART_Receive(&huart1, ch, 3, 11);
 //		HAL_UART_Transmit(&huart1, ch, sizeof(ch), 0xFFFF);

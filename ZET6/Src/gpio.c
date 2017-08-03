@@ -40,6 +40,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "gpio.h"
 /* USER CODE BEGIN 0 */
+#include "stm32f1xx_hal.h"
 uint8_t Key_Press = 0;
 /* USER CODE END 0 */
 
@@ -100,11 +101,11 @@ void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : PBPin PBPin PBPin PBPin 
                            PBPin */
-  GPIO_InitStruct.Pin = Key_M_Pin|Key_U_Pin|Key_D_Pin|Key_L_Pin 
-                          |Key_R_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+//  GPIO_InitStruct.Pin = Key_M_Pin|Key_U_Pin|Key_D_Pin|Key_L_Pin 
+//                          |Key_R_Pin;
+//  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+//  GPIO_InitStruct.Pull = GPIO_PULLUP;
+//  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PtPin */
   GPIO_InitStruct.Pin = LED_1_Pin;
@@ -115,6 +116,17 @@ void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 2 */
+
+/*************************************************************************
+*函数名：  Get_Key()
+*函数功能：按键检测，识别哪个按键被按下
+*入口参数：无
+*返回值：  无
+*作者：    康滢
+*时间：		 2017.7.23
+*备注：	   无传入参数，但在之前要定义一个全局变量Key_Press，用于标记是哪个
+					 按键被按下，并在每次进入该函数时，该标记都会清零。
+**************************************************************************/
 void Get_Key(void)
 {
 	Key_Press = 0;

@@ -44,6 +44,8 @@
 
 /* USER CODE BEGIN Includes */
 #include "oled.h"
+#include "delay.h"
+#include "mpu6050.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -90,14 +92,24 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_TIM2_Init();
+  MX_TIM1_Init();
 
   /* USER CODE BEGIN 2 */
+	/*==========头文件==========*/
 	OLED_Init();
+	Delay_Config();
 	
+	IIC_Init();
+
+	MPU6050_initialize();
+//	DMP_Init(); 
+	/*==========================*/
+	uint8_t ch[20];
+	uint32_t i;
 	HAL_TIM_Base_Start_IT(&htim2);
 	OLED_ShowString(0,0,"ALIENTEK",24);
 	OLED_Refresh_Gram();
-	float i = 0;
+
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);//得先start一遍
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
@@ -112,15 +124,19 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-		uint8_t Forward[8] = {0x01, 0x03, 0x02, 0x06, 0x04, 0x0C, 0x08, 0x09};
-		for(uint8_t i=7; i>=0; i--)
-		{
-			GPIOE->BSRR = ~Forward[i];
-//			HAL_Delay(1);
-			for(uint8_t j = 0; j<=120; j++)
-				for(uint8_t k =0; k<=120; k++);
-			i = i==0?8:i;
-		}
+		
+  /* 步进电机控制 */
+//		uint8_t Forward[8] = {0x01, 0x03, 0x02, 0x06, 0x04, 0x0C, 0x08, 0x09};
+//		for(uint8_t i=7; i>=0; i--)
+//		{
+//			GPIOE->BSRR = ~Forward[i];
+////			HAL_Delay(1);
+//			for(uint8_t j = 0; j<=120; j++)
+//				for(uint8_t k =0; k<=120; k++);
+//			i = i==0?8:i;
+//		}
+		
+		
 //		while(1)
 //		{
 //			GPIOE->BSRR = ~0x03;
@@ -135,15 +151,24 @@ int main(void)
 //		uint8_t ch[3];
 //		HAL_UART_Receive(&huart1, ch, 3, 11);
 //		HAL_UART_Transmit(&huart1, ch, sizeof(ch), 0xFFFF);
-		HAL_UART_Transmit(&huart1, "这是发送\r\n", sizeof("这是发送\r\n"), 0x0001);
-		
-		i = i+1000;
-		PWM_Frequency_Set(TIM2, 9);
-		PWM_Ratio_Set(&htim2, TIM_CHANNEL_2, 7931);
-//		htim2.Instance->CCR2 = i;
-		if(i >= 9999)
-			i = 0;
-		HAL_Delay(3000);
+		i = (I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_YOUT_H)<<8)+I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_YOUT_L);
+//		sprintf(ch, "%d", i);
+//		HAL_UART_Transmit(&huart1, ch, sizeof(ch), 0xFFFF);
+		printf("开始\r\n");
+//		printf("发送结束\r\n",i);
+		uint8_t ch[20] = "";
+		int a, b=0, c=0;
+		scanf("%5d\r\n",&a);
+		printf("%d\r\n",a);
+/*
+在传入int型时，上位机那要以 内容\n  发送
+		  
+
+*/
+//		PWM_Frequency_Set(TIM2, 9);
+//		PWM_Ratio_Set(&htim2, TIM_CHANNEL_2, 7931);
+
+		Delay_ms(10);
 //		printf("TEMP: 是吗\r\n");
 //		switch (GO)
 //		{

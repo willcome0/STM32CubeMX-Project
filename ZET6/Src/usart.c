@@ -124,7 +124,30 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 } 
 
 /* USER CODE BEGIN 1 */
+/*************************************************************************
+*函数名：  fputc()
+*函数功能：重定向C库函数printf到USART1
+*入口参数：额...
+*返回值：  返回值为打印字符的个数（\r\n算2个）
+*参考：    http://blog.csdn.net/chenwei2002/article/details/49284299
+*时间：		 2017.8.2
+*备注：	   如不用重定向->HAL_UART_Transmit(&huart1, ch, sizeof(ch), 0xFFFF);
+					 PS：重定向后真是好用
+**************************************************************************/
+int fputc(int ch, FILE *f)
+{
+	HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 0xFFFF);
 
+	return ch;
+}
+int fgetc(FILE *f)
+{
+	uint8_t  ch;
+
+	HAL_UART_Receive(&huart1,(uint8_t *)&ch, 1, 0xFFFF);
+
+	return  ch;
+}
 /* USER CODE END 1 */
 
 /**

@@ -126,6 +126,7 @@ void usart1_report_imu(short aacx,short aacy,short aacz,short gyrox,short gyroy,
 	tbuf[22]=(yaw>>8)&0XFF;
 	tbuf[23]=yaw&0XFF;
 	usart1_niming_report(0XAF,tbuf,28);//飞控显示帧,0XAF
+//	OLED_ShowString(0,  0, "???", 12);//看看是采样间隔，还是采样周期问题
 }  
 /* USER CODE END 0 */
 
@@ -162,7 +163,7 @@ int main(void)
 	/*==========头文件==========*/
 	OLED_Init();
 	Delay_Config();
-	
+
 	IIC_Init();
 	MPU6050_initialize();
 	DMP_Init(); 
@@ -193,12 +194,14 @@ int main(void)
 	Get_Angle();
 	mpu6050_send_data(Accel_X,Accel_Y,Accel_Z,Gyro_X,Gyro_Y,Gyro_Z);//用自定义帧发送加速度和陀螺仪原始数据
 	usart1_report_imu(Accel_X,Accel_Y,Accel_Z,Gyro_X,Gyro_Y,Gyro_Z,(int)(Roll*100),(int)(Pitch*100),(int)(Yaw*10));
+		Delay_ms(150);
 //		huart1.Instance->DR = ('m' & (uint16_t)0x01FF);
 		{
-			uint8_t ch[25] = "";
-			sprintf(ch, "  Pitch: %3.1f       ", Pitch);
-			OLED_ShowString(0,  0, ch, 12);
+//			uint8_t ch[25] = "";
+//			sprintf(ch, "  Pitch: %3.1f       ", Pitch);
+//			OLED_ShowString(0,  0, "???", 12);//看看是采样间隔，还是采样周期问题
 		}
+//		Delay_ms(5);
 //		{
 //			uint8_t ch[25] = "";
 //			sprintf(ch, "  Roll : %3.1f       ", Roll);
@@ -233,7 +236,7 @@ int main(void)
   }//循环结束
   /* USER CODE END 3 */
 
-}//main结束
+}
 
 /** System Clock Configuration
 */

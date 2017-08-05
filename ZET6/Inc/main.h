@@ -47,6 +47,10 @@
 
 #define LED_2_Pin GPIO_PIN_5
 #define LED_2_GPIO_Port GPIOE
+#define MPU_SCL_Pin GPIO_PIN_4
+#define MPU_SCL_GPIO_Port GPIOA
+#define MPU_SDA_Pin GPIO_PIN_5
+#define MPU_SDA_GPIO_Port GPIOA
 #define OLED_DC_Pin GPIO_PIN_9
 #define OLED_DC_GPIO_Port GPIOG
 #define OLED_RST_Pin GPIO_PIN_11

@@ -64,6 +64,69 @@ void SystemClock_Config(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
+/***********上位机支持***************/
+
+void usart1_send_char(uint8_t Data)
+{   	
+	while((huart1.Instance->SR & ((uint16_t)0x0040)) == ((uint16_t)0)); //循环发送,直到发送完毕。详情看标准固件库中的USART_GetFlagStatus函数
+	huart1.Instance->DR = (Data & (uint16_t)0x01FF); //串口1发送字符
+//std库的话USART1->SR/DR
+} 
+void usart1_niming_report(uint8_t fun, uint8_t *data, uint8_t len)
+{
+	uint8_t send_buf[32];
+	uint8_t i;
+	if(len>28)return;	//最多28字节数据 
+	send_buf[len+3]=0;	//校验数置零
+	send_buf[0]=0X88;	//帧头
+	send_buf[1]=fun;	//功能字
+	send_buf[2]=len;	//数据长度
+	for(i=0;i<len;i++)send_buf[3+i]=data[i];			//复制数据
+	for(i=0;i<len+3;i++)send_buf[len+3]+=send_buf[i];	//计算校验和	
+	for(i=0;i<len+4;i++)usart1_send_char(send_buf[i]);	//发送数据到串口1 
+}
+void mpu6050_send_data(short aacx,short aacy,short aacz,short gyrox,short gyroy,short gyroz)
+{
+	uint8_t tbuf[12]; 
+	tbuf[0]=(aacx>>8)&0XFF;
+	tbuf[1]=aacx&0XFF;
+	tbuf[2]=(aacy>>8)&0XFF;
+	tbuf[3]=aacy&0XFF;
+	tbuf[4]=(aacz>>8)&0XFF;
+	tbuf[5]=aacz&0XFF; 
+	tbuf[6]=(gyrox>>8)&0XFF;
+	tbuf[7]=gyrox&0XFF;
+	tbuf[8]=(gyroy>>8)&0XFF;
+	tbuf[9]=gyroy&0XFF;
+	tbuf[10]=(gyroz>>8)&0XFF;
+	tbuf[11]=gyroz&0XFF;
+	usart1_niming_report(0XA1,tbuf,12);//自定义帧,0XA1
+}	
+void usart1_report_imu(short aacx,short aacy,short aacz,short gyrox,short gyroy,short gyroz,short roll,short pitch,short yaw)
+{
+	uint8_t tbuf[28]; 
+	uint8_t i;
+	for(i=0;i<28;i++)tbuf[i]=0;//清0
+	tbuf[0]=(aacx>>8)&0XFF;
+	tbuf[1]=aacx&0XFF;
+	tbuf[2]=(aacy>>8)&0XFF;
+	tbuf[3]=aacy&0XFF;
+	tbuf[4]=(aacz>>8)&0XFF;
+	tbuf[5]=aacz&0XFF; 
+	tbuf[6]=(gyrox>>8)&0XFF;
+	tbuf[7]=gyrox&0XFF;
+	tbuf[8]=(gyroy>>8)&0XFF;
+	tbuf[9]=gyroy&0XFF;
+	tbuf[10]=(gyroz>>8)&0XFF;
+	tbuf[11]=gyroz&0XFF;	
+	tbuf[18]=(roll>>8)&0XFF;
+	tbuf[19]=roll&0XFF;
+	tbuf[20]=(pitch>>8)&0XFF;
+	tbuf[21]=pitch&0XFF;
+	tbuf[22]=(yaw>>8)&0XFF;
+	tbuf[23]=yaw&0XFF;
+	usart1_niming_report(0XAF,tbuf,28);//飞控显示帧,0XAF
+}  
 /* USER CODE END 0 */
 
 int main(void)
@@ -95,20 +158,23 @@ int main(void)
   MX_TIM1_Init();
 
   /* USER CODE BEGIN 2 */
+	
 	/*==========头文件==========*/
 	OLED_Init();
 	Delay_Config();
 	
 	IIC_Init();
-
 	MPU6050_initialize();
-//	DMP_Init(); 
-	/*==========================*/
+	DMP_Init(); 
+	/*===========变量===========*/
 	uint8_t ch[20];
 	uint32_t i;
+	
+	
+	
+	
+	/*=========循环前函数=========*/
 	HAL_TIM_Base_Start_IT(&htim2);
-	OLED_ShowString(0,0,"ALIENTEK",24);
-	OLED_Refresh_Gram();
 
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);//得先start一遍
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
@@ -124,51 +190,32 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-		
-  /* 步进电机控制 */
-//		uint8_t Forward[8] = {0x01, 0x03, 0x02, 0x06, 0x04, 0x0C, 0x08, 0x09};
-//		for(uint8_t i=7; i>=0; i--)
+	Get_Angle();
+	mpu6050_send_data(Accel_X,Accel_Y,Accel_Z,Gyro_X,Gyro_Y,Gyro_Z);//用自定义帧发送加速度和陀螺仪原始数据
+	usart1_report_imu(Accel_X,Accel_Y,Accel_Z,Gyro_X,Gyro_Y,Gyro_Z,(int)(Roll*100),(int)(Pitch*100),(int)(Yaw*10));
+//		huart1.Instance->DR = ('m' & (uint16_t)0x01FF);
+		{
+			uint8_t ch[25] = "";
+			sprintf(ch, "  Pitch: %3.1f       ", Pitch);
+			OLED_ShowString(0,  0, ch, 12);
+		}
 //		{
-//			GPIOE->BSRR = ~Forward[i];
-////			HAL_Delay(1);
-//			for(uint8_t j = 0; j<=120; j++)
-//				for(uint8_t k =0; k<=120; k++);
-//			i = i==0?8:i;
+//			uint8_t ch[25] = "";
+//			sprintf(ch, "  Roll : %3.1f       ", Roll);
+//			OLED_ShowString(0, 13, ch, 12);
 //		}
-		
-		
-//		while(1)
 //		{
-//			GPIOE->BSRR = ~0x03;
-//			HAL_Delay(1);
-//			GPIOE->BSRR = ~0x06;
-//			HAL_Delay(1);
-//			GPIOE->BSRR = ~0x0C;
-//			HAL_Delay(1);
-//			GPIOE->BSRR = ~0x09;
-//			HAL_Delay(1);
+//			uint8_t ch[25] = "";
+//			sprintf(ch, "  Yaw  : %3.1f       ", Yaw);
+//			OLED_ShowString(0, 26, ch, 12);
 //		}
-//		uint8_t ch[3];
-//		HAL_UART_Receive(&huart1, ch, 3, 11);
-//		HAL_UART_Transmit(&huart1, ch, sizeof(ch), 0xFFFF);
-		i = (I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_YOUT_H)<<8)+I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_YOUT_L);
-//		sprintf(ch, "%d", i);
-//		HAL_UART_Transmit(&huart1, ch, sizeof(ch), 0xFFFF);
-		printf("开始\r\n");
-//		printf("发送结束\r\n",i);
-		uint8_t ch[20] = "";
-		int a, b=0, c=0;
-		scanf("%5d\r\n",&a);
-		printf("%d\r\n",a);
-/*
-在传入int型时，上位机那要以 内容\n  发送
-		  
+//		{
+//			uint8_t ch[25] = "";
+//			sprintf(ch, "  P_Kal: %3.1f       ", Pitch_Kalman);
+//			OLED_ShowString(0, 39, ch, 12);
+//		}
+//		OLED_Refresh_Gram();
 
-*/
-//		PWM_Frequency_Set(TIM2, 9);
-//		PWM_Ratio_Set(&htim2, TIM_CHANNEL_2, 7931);
-
-		Delay_ms(10);
 //		printf("TEMP: 是吗\r\n");
 //		switch (GO)
 //		{
@@ -183,10 +230,10 @@ int main(void)
 //			default: 	GO = Main_UI_Con();		break;
 //		}
 
-  }
+  }//循环结束
   /* USER CODE END 3 */
 
-}
+}//main结束
 
 /** System Clock Configuration
 */

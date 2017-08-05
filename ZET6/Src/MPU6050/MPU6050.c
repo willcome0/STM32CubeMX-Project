@@ -14,8 +14,25 @@
 #define FLASH_MEM_START ((void*)0x1800)
 #define q30  1073741824.0f
 short gyro[3], accel[3], sensors;
-float Pitch,Roll; 
+float Pitch,Roll,Yaw;//DMP处理->俯仰角/横滚角/航向角
+float Accel_X, Accel_Y, Accel_Z;//加速度计
+float Accel_Y_Cal;//计算得出的Y轴加速度
+float Gyro_X, Gyro_Y, Gyro_Z;//陀螺仪
 float q0=1.0f,q1=0.0f,q2=0.0f,q3=0.0f;
+/*************************卡尔曼滤波相关*****************************/
+float K1 =0.02; 
+float Pitch_Kalman, angle_dot; 	
+float Q_angle=0.001;// 过程噪声的协方差
+float Q_gyro=0.003;//0.003 过程噪声的协方差 过程噪声的协方差为一个一行两列矩阵
+float R_angle=0.5;// 测量噪声的协方差 既测量偏差
+float dt=0.005;//                 
+char  C_0 = 1;
+float Q_bias, Angle_err;
+float PCt_0, PCt_1, E;
+float K_0, K_1, t_0, t_1;
+float Pdot[4] ={0,0,0,0};
+float PP[2][2] = { { 1, 0 },{ 0, 1 } };
+/*******************************************************************/
 static signed char gyro_orientation[9] = {-1, 0, 0,
                                            0,-1, 0,
                                            0, 0, 1};
@@ -261,29 +278,29 @@ void DMP_Init(void)
    uint8_t temp[1]={0};
    i2cRead(0x68,0x75,1,temp);
 //	 Flag_Show=1;
-	 printf("mpu_set_sensor complete ......\r\n");
+//	 printf("mpu_set_sensor complete ......\r\n");
 	if(temp[0]!=0x68)NVIC_SystemReset();
 	if(!mpu_init())
   {
-	  if(!mpu_set_sensors(INV_XYZ_GYRO | INV_XYZ_ACCEL))
-	  	 printf("mpu_set_sensor complete ......\r\n");
-	  if(!mpu_configure_fifo(INV_XYZ_GYRO | INV_XYZ_ACCEL))
-	  	 printf("mpu_configure_fifo complete ......\r\n");
-	  if(!mpu_set_sample_rate(DEFAULT_MPU_HZ))
-	  	 printf("mpu_set_sample_rate complete ......\r\n");
-	  if(!dmp_load_motion_driver_firmware())
-	  	printf("dmp_load_motion_driver_firmware complete ......\r\n");
-	  if(!dmp_set_orientation(inv_orientation_matrix_to_scalar(gyro_orientation)))
-	  	 printf("dmp_set_orientation complete ......\r\n");
+	  if(!mpu_set_sensors(INV_XYZ_GYRO | INV_XYZ_ACCEL));
+//	  	 printf("mpu_set_sensor complete ......\r\n");
+	  if(!mpu_configure_fifo(INV_XYZ_GYRO | INV_XYZ_ACCEL));
+//	  	 printf("mpu_configure_fifo complete ......\r\n");
+	  if(!mpu_set_sample_rate(DEFAULT_MPU_HZ));
+//	  	 printf("mpu_set_sample_rate complete ......\r\n");
+	  if(!dmp_load_motion_driver_firmware());
+//	  	printf("dmp_load_motion_driver_firmware complete ......\r\n");
+	  if(!dmp_set_orientation(inv_orientation_matrix_to_scalar(gyro_orientation)));
+//	  	 printf("dmp_set_orientation complete ......\r\n");
 	  if(!dmp_enable_feature(DMP_FEATURE_6X_LP_QUAT | DMP_FEATURE_TAP |
 	        DMP_FEATURE_ANDROID_ORIENT | DMP_FEATURE_SEND_RAW_ACCEL | DMP_FEATURE_SEND_CAL_GYRO |
-	        DMP_FEATURE_GYRO_CAL))
-	  	 printf("dmp_enable_feature complete ......\r\n");
-	  if(!dmp_set_fifo_rate(DEFAULT_MPU_HZ))
-	  	 printf("dmp_set_fifo_rate complete ......\r\n");
+	        DMP_FEATURE_GYRO_CAL));
+//	  	 printf("dmp_enable_feature complete ......\r\n");
+	  if(!dmp_set_fifo_rate(DEFAULT_MPU_HZ));
+//	  	 printf("dmp_set_fifo_rate complete ......\r\n");
 	  run_self_test();
-	  if(!mpu_set_dmp_state(1))
-	  	 printf("mpu_set_dmp_state complete ......\r\n");
+	  if(!mpu_set_dmp_state(1));
+//	  	 printf("mpu_set_dmp_state complete ......\r\n");
   }
 //	Flag_Show=0;
 }
@@ -306,8 +323,9 @@ void Read_DMP(void)
 					 q1=quat[1] / q30;
 					 q2=quat[2] / q30;
 					 q3=quat[3] / q30;
-					 Pitch = asin(-2 * q1 * q3 + 2 * q0* q2)* 57.3; 	
-					 Roll = atan2(2 * q2 * q3 + 2 * q0 * q1, -2 * q1 * q1 - 2 * q2* q2 + 1)* 57.3; // roll
+					 Pitch = asin(-2 * q1 * q3 + 2 * q0* q2)* 57.3;    //俯仰角
+					 Roll  = atan2(2 * q2 * q3 + 2 * q0 * q1, -2 * q1 * q1 - 2 * q2* q2 + 1)* 57.3; //横滚角
+					 Yaw   = atan2(2*(q1*q2 + q0*q3),q0*q0+q1*q1-q2*q2-q3*q3) * 57.3;	//航向角
 				}
 
 }
@@ -328,41 +346,100 @@ int Read_Temperature(void)
 
 
 /**************************************************************************
-函数功能：获取角度 三种算法经过我们的调校，都非常理想 
-入口参数：获取角度的算法 1：DMP  2：卡尔曼 3：互补滤波
-返回  值：无
+*函数功能：获取角度 三种算法经过我们的调校，都非常理想 
+*入口参数：获取角度的算法 1：DMP  2：卡尔曼 3：互补滤波
+*返 回 值：无
 **************************************************************************/
-void Get_Angle(uint8_t way)
+void Get_Angle(void)
 { 
-	    float Accel_Y,Accel_X,Accel_Z,Gyro_Y,Gyro_Z;
+	    
 //	   	Temperature=Read_Temperature();      //===读取MPU6050内置温度传感器数据，近似表示主板温度。
-	    if(way==1)                           //===DMP的读取在数据采集中断提醒的时候，严格遵循时序要求
-			{	
-					Read_DMP();                      //===读取加速度、角速度、倾角
+
+				Read_DMP();                      //===读取加速度、角速度、倾角
+	
+				Gyro_X=(I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_XOUT_H)<<8)+I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_XOUT_L);//陀螺仪
+				Gyro_Y=(I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_YOUT_H)<<8)+I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_YOUT_L);
+				Gyro_Z=(I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_ZOUT_H)<<8)+I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_ZOUT_L);
+				
+				Accel_X=(I2C_ReadOneByte(devAddr,MPU6050_RA_ACCEL_XOUT_H)<<8)+I2C_ReadOneByte(devAddr,MPU6050_RA_ACCEL_XOUT_L);//加速度计
+				Accel_Y=(I2C_ReadOneByte(devAddr,MPU6050_RA_ACCEL_YOUT_H)<<8)+I2C_ReadOneByte(devAddr,MPU6050_RA_ACCEL_YOUT_L);
+				Accel_Z=(I2C_ReadOneByte(devAddr,MPU6050_RA_ACCEL_ZOUT_H)<<8)+I2C_ReadOneByte(devAddr,MPU6050_RA_ACCEL_ZOUT_L);
 				
 //					Angle_Balance=Pitch;             //===更新平衡倾角
 //					Gyro_Balance=gyro[1];            //===更新平衡角速度
 //					Gyro_Turn=gyro[2];               //===更新转向角速度
 //				  Acceleration_Z=accel[2];         //===更新Z轴加速度计
-			}			
-//      else
-//      {
-//			Gyro_Y=(I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_YOUT_H)<<8)+I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_YOUT_L);    //读取Y轴陀螺仪
-//			Gyro_Z=(I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_ZOUT_H)<<8)+I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_ZOUT_L);    //读取Z轴陀螺仪
-//		  Accel_X=(I2C_ReadOneByte(devAddr,MPU6050_RA_ACCEL_XOUT_H)<<8)+I2C_ReadOneByte(devAddr,MPU6050_RA_ACCEL_XOUT_L); //读取X轴加速度计
-//	  	Accel_Z=(I2C_ReadOneByte(devAddr,MPU6050_RA_ACCEL_ZOUT_H)<<8)+I2C_ReadOneByte(devAddr,MPU6050_RA_ACCEL_ZOUT_L); //读取Z轴加速度计
+
+
+	
 //		  if(Gyro_Y>32768)  Gyro_Y-=65536;                       //数据类型转换  也可通过short强制类型转换
-//			if(Gyro_Z>32768)  Gyro_Z-=65536;                       //数据类型转换
-//	  	if(Accel_X>32768) Accel_X-=65536;                      //数据类型转换
-//		  if(Accel_Z>32768) Accel_Z-=65536;                      //数据类型转换
-//			Gyro_Balance=-Gyro_Y;                                  //更新平衡角速度
-//	   	Accel_Y=atan2(Accel_X,Accel_Z)*180/PI;                 //计算倾角	
-//		  Gyro_Y=Gyro_Y/16.4;                                    //陀螺仪量程转换	
-//      if(Way_Angle==2)		  	Kalman_Filter(Accel_Y,-Gyro_Y);//卡尔曼滤波	
-//			else if(Way_Angle==3)   Yijielvbo(Accel_Y,-Gyro_Y);    //互补滤波
-//	    Angle_Balance=angle;                                   //更新平衡倾角
+//			if(Gyro_Z>32768)  Gyro_Z-=65536;
+//	  	if(Accel_X>32768) Accel_X-=65536;
+//		  if(Accel_Z>32768) Accel_Z-=65536;
+//////			Gyro_Balance=-Gyro_Y;                                  //更新平衡角速度//平衡角速度取的是Y向角速度
+//	   	Accel_Y=atan2(Accel_X,Accel_Z)*180/3.1415;                 //计算倾角	
+//		  Gyro_Y=Gyro_Y/16.4;                                    //Y轴角速度量程转换	
+//			Yijielvbo(Accel_Y,-Gyro_Y);//卡尔曼滤波,得出Pitch_Kalman	//得出的这个误差越来越大   
+			
+			
+			
+			
+//		Yijielvbo(Accel_Y,-Gyro_Y);    //互补滤波
 //			Gyro_Turn=Gyro_Z;                                      //更新转向角速度
 //			Acceleration_Z=Accel_Z;                                //===更新Z轴加速度计	
-//		}
+
 }
+
+
+/**************************************************************************
+*函数功能：简易卡尔曼滤波
+*入口参数：加速度、角速度
+*返 回 值：无
+**************************************************************************/
+void Kalman_Filter(float Accel,float Gyro)		
+{
+	Pitch_Kalman+=(Gyro - Q_bias) * dt; //先验估计
+	Pdot[0]=Q_angle - PP[0][1] - PP[1][0]; // Pk-先验估计误差协方差的微分
+
+	Pdot[1]=-PP[1][1];
+	Pdot[2]=-PP[1][1];
+	Pdot[3]=Q_gyro;
+	PP[0][0] += Pdot[0] * dt;   // Pk-先验估计误差协方差微分的积分
+	PP[0][1] += Pdot[1] * dt;   // =先验估计误差协方差
+	PP[1][0] += Pdot[2] * dt;
+	PP[1][1] += Pdot[3] * dt;
+		
+	Angle_err = Accel - Pitch_Kalman;	//zk-先验估计
+	
+	PCt_0 = C_0 * PP[0][0];
+	PCt_1 = C_0 * PP[1][0];
+	
+	E = R_angle + C_0 * PCt_0;
+	
+	K_0 = PCt_0 / E;
+	K_1 = PCt_1 / E;
+	
+	t_0 = PCt_0;
+	t_1 = C_0 * PP[0][1];
+
+	PP[0][0] -= K_0 * t_0;		 //后验估计误差协方差
+	PP[0][1] -= K_0 * t_1;
+	PP[1][0] -= K_1 * t_0;
+	PP[1][1] -= K_1 * t_1;
+		
+	Pitch_Kalman	+= K_0 * Angle_err;	 //后验估计
+	Q_bias	+= K_1 * Angle_err;	 //后验估计
+	angle_dot   = Gyro - Q_bias;	 //输出值(后验估计)的微分=角速度
+}
+
+/**************************************************************************
+函数功能：一阶互补滤波
+入口参数：加速度、角速度
+返回  值：无
+**************************************************************************/
+void Yijielvbo(float Accel, float Gyro)
+{
+   Pitch_Kalman = K1 * Accel+ (1-K1) * (Pitch_Kalman + Gyro * 0.005);
+}
+
 //------------------End of File----------------------------

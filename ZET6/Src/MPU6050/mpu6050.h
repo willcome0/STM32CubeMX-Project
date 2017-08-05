@@ -366,7 +366,11 @@
 extern	short gyro[3], accel[3];
 extern int16_t Gx_offset,Gy_offset,Gz_offset;
 extern float Acc1G_Values;
-extern float Pitch,Roll; 
+extern float Pitch,Roll,Yaw;
+extern float Pitch_Kalman;
+extern float Accel_X, Accel_Y, Accel_Z;//加速度计
+extern float Accel_Y_Cal;//计算得出的Y轴加速度
+extern float Gyro_X, Gyro_Y, Gyro_Z;//陀螺仪
 //供外部调用的API
 void MPU6050_initialize(void); //初始化
 uint8_t MPU6050_testConnection(void); //检测MPU6050是否存在
@@ -379,4 +383,8 @@ void MPU6050_InitGyro_Offset(void);//初始化陀螺仪偏置
 void DMP_Init(void);
 void Read_DMP(void);
 int Read_Temperature(void);
+
+
+void Kalman_Filter(float Accel,float Gyro);
+void Yijielvbo(float Accel, float Gyro);
 #endif

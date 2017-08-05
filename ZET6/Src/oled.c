@@ -250,14 +250,22 @@ void OLED_Init(void)
 //[7]0 1 2 3 ... 127 
 
 
-
-
-
-
-
-
-
-
+/*
+    1、要赋入参数：
+		{
+			uint8_t ch[25] = "";
+			sprintf(ch, "                     ", 赋入参数);	          "                     "
+			OLED_ShowString(0, 0, ch, 12);
+		}
+		2、直接显示：
+		OLED_ShowString(0, 0, "                     ", 12);
+		
+		OLED_ShowString(0,  0, "MJMJMJMJMJMJMJMJMJMJM", 12);
+		OLED_ShowString(0, 13, "MJMJMJMJMJMJMJMJMJMJM", 12);
+		OLED_ShowString(0, 26, "MJMJMJMJMJMJMJMJMJMJM", 12);
+		OLED_ShowString(0, 39, "MJMJMJMJMJMJMJMJMJMJM", 12);
+		OLED_ShowString(0, 52, "MJMJMJMJMJMJMJMJMJMJM", 12);
+*/
 
 
 

@@ -23,7 +23,6 @@
 #define OLED_CMD  0	//ะดรüม๎
 #define OLED_DATA 1	//ะดสýพÝ
 
-
 void OLED_WR_Byte(uint8_t dat, uint8_t cmd);	    
 void OLED_Display_On(void);
 void OLED_Display_Off(void);

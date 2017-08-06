@@ -4,20 +4,35 @@
 #include "stdint.h"
 #include "main.h"
 #include "delay.h"
-  /**************************************************************************
-作者：平衡小车之家
-我的淘宝小店：http://shop114407458.taobao.com/
+
+
+
+/*************************************************************************
+*函 数 名：IIC_Config()
+*函数功能：MPU6050的模拟IIC的初始化
+*入口参数：无
+*返 回 值：无
+*作    者：康滢
+*时    间：2017.8.6
+*备    注：即使在gpio_init中定义过这两个脚，在mpu6050初始化前还需将
+					 IIC两个引脚配置一下。原因还未知！
 **************************************************************************/
-/**************************实现函数********************************************
-*函数原型:		void IIC_Init(void)
-*功　　能:		初始化I2C对应的接口引脚。
-*******************************************************************************/
-void IIC_Init(void)
+void IIC_Config(void)
 {			
-	RCC->APB2ENR|=1<<2;//先使能外设IO PORTB时钟 							 
-	GPIOA->CRL&=0XFF00FFFF;//PB8/9 推挽输出 
-	GPIOA->CRL|=0X00330000;	
+//	RCC->APB2ENR|=1<<2;//使能PORTA时钟
+//	RCC->APB2ENR|=1<<3;//使能PORTB时钟 	
+//	GPIOA->CRL&=0XFF00FFFF;//PB4/5
+//	GPIOA->CRL|=0X00330000;//推挽输出
+	HAL_GPIO_WritePin(GPIOA, MPU_SCL_Pin|MPU_SDA_Pin, GPIO_PIN_SET);
 	
+	GPIO_InitTypeDef GPIO_InitStruct;
+	
+	GPIO_InitStruct.Pin = MPU_SCL_Pin|MPU_SDA_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+	
+
 }
 
 /**************************实现函数********************************************

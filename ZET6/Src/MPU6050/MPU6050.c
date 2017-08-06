@@ -442,4 +442,201 @@ void Yijielvbo(float Accel, float Gyro)
    Pitch_Kalman = K1 * Accel+ (1-K1) * (Pitch_Kalman + Gyro * 0.005);
 }
 
+ ///********************************2.6上位机相关************************************/
+///*************************************************************************
+//*函 数 名：usart1_send_char()
+//*函数功能：发送一个字符（有发送完毕检测）
+//*入口参数：数据（字符）
+//*返 回 值：无
+//*作    者：康滢
+//*时    间：2017.8.4
+//*备    注：完全寄存器的写法，具体看下面注释
+//**************************************************************************/
+//void usart1_send_char(uint8_t Data)
+//{   	
+//	while((huart1.Instance->SR & ((uint16_t)0x0040)) == ((uint16_t)0)); //循环发送,直到发送完毕。详情看标准固件库中的USART_GetFlagStatus函数
+//	huart1.Instance->DR = (Data & (uint16_t)0x01FF); //串口1发送字符。详情看标准固件库中的USART_SendData函数
+////std库的话USART1->SR/DR
+//}
+
+//void usart1_niming_report(uint8_t fun, uint8_t *data, uint8_t len)
+//{
+//	uint8_t send_buf[32];
+//	uint8_t i;
+//	if(len>28)return;	//最多28字节数据 
+//	send_buf[len+3]=0;	//校验数置零
+//	send_buf[0]=0X88;	//帧头
+//	send_buf[1]=fun;	//功能字
+//	send_buf[2]=len;	//数据长度
+//	for(i=0;i<len;i++)send_buf[3+i]=data[i];			//复制数据
+//	for(i=0;i<len+3;i++)send_buf[len+3]+=send_buf[i];	//计算校验和	
+//	for(i=0;i<len+4;i++)usart1_send_char(send_buf[i]);	//发送数据到串口1 
+//}
+//void mpu6050_send_data(short aacx,short aacy,short aacz,short gyrox,short gyroy,short gyroz)
+//{
+//	uint8_t tbuf[12]; 
+//	tbuf[0]=(aacx>>8)&0XFF;
+//	tbuf[1]=aacx&0XFF;
+//	tbuf[2]=(aacy>>8)&0XFF;
+//	tbuf[3]=aacy&0XFF;
+//	tbuf[4]=(aacz>>8)&0XFF;
+//	tbuf[5]=aacz&0XFF; 
+//	tbuf[6]=(gyrox>>8)&0XFF;
+//	tbuf[7]=gyrox&0XFF;
+//	tbuf[8]=(gyroy>>8)&0XFF;
+//	tbuf[9]=gyroy&0XFF;
+//	tbuf[10]=(gyroz>>8)&0XFF;
+//	tbuf[11]=gyroz&0XFF;
+//	usart1_niming_report(0XA1,tbuf,12);//自定义帧,0XA1
+//}
+///*************************************************************************
+//*函 数 名：usart1_report_imu()
+//*函数功能：
+//*入口参数：6轴原始值，3个欧拉角
+//*返 回 值：无
+//*时    间：2017.8.4
+//*备    注：如果在循环中只执行上传程序，上位机无法正常工作。
+//					 加入延时只能Delay_ms(150);过小同样不能，但这样采样周期太大。
+//					 奇怪的是
+//**************************************************************************/
+//void usart1_report_imu(short aacx,short aacy,short aacz,short gyrox,short gyroy,short gyroz,short roll,short pitch,short yaw)
+//{
+//	uint8_t tbuf[28]; 
+//	uint8_t i;
+//	for(i=0;i<28;i++)tbuf[i]=0;//清0
+//	tbuf[0]=(aacx>>8)&0XFF;
+//	tbuf[1]=aacx&0XFF;
+//	tbuf[2]=(aacy>>8)&0XFF;
+//	tbuf[3]=aacy&0XFF;
+//	tbuf[4]=(aacz>>8)&0XFF;
+//	tbuf[5]=aacz&0XFF; 
+//	tbuf[6]=(gyrox>>8)&0XFF;
+//	tbuf[7]=gyrox&0XFF;
+//	tbuf[8]=(gyroy>>8)&0XFF;
+//	tbuf[9]=gyroy&0XFF;
+//	tbuf[10]=(gyroz>>8)&0XFF;
+//	tbuf[11]=gyroz&0XFF;	
+//	tbuf[18]=(roll>>8)&0XFF;
+//	tbuf[19]=roll&0XFF;
+//	tbuf[20]=(pitch>>8)&0XFF;
+//	tbuf[21]=pitch&0XFF;
+//	tbuf[22]=(yaw>>8)&0XFF;
+//	tbuf[23]=yaw&0XFF;
+//	usart1_niming_report(0XAF,tbuf,28);//飞控显示帧,0XAF
+//	OLED_DrawPoint(0,0,0);//莫名其妙得添加这个
+//} 
+//下面与获取角度放在循环里即可
+//	mpu6050_send_data(Accel_X,Accel_Y,Accel_Z,Gyro_X,Gyro_Y,Gyro_Z);//用自定义帧发送加速度和陀螺仪原始数据
+//	usart1_report_imu(Accel_X,Accel_Y,Accel_Z,Gyro_X,Gyro_Y,Gyro_Z,(int)(Roll*100),(int)(Pitch*100),(int)(Yaw*10));
+
+
+/********************************4.34上位机相关************************************/
+/*******用前把这全部挪到主函数前。要复位得话，上位机先断开连接一下*****************/
+/*************************************************************************
+*函 数 名：usart1_report_imu()
+*函数功能：BYTE0(XX)什么玩意
+*时    间：2017.8.6
+*备    注：http://blog.sina.com.cn/s/blog_a3e25cc70102vhs5.html
+**************************************************************************/
+//#define BYTE0(dwTemp)       (*(char *)(&dwTemp))         //0-7位
+//#define BYTE1(dwTemp)       (*((char *)(&dwTemp) + 1))  //8-15位
+//#define BYTE2(dwTemp)       (*((char *)(&dwTemp) + 2))  //16-23位
+//#define BYTE3(dwTemp)       (*((char *)(&dwTemp) + 3))  //24-31位
+//uint8_t data_to_send[50];	//发送数据缓存
+//void ANO_DT_Send_Data(uint8_t *dataToSend , uint8_t length)
+//{
+////	Usart2_Send(data_to_send, length);
+//	HAL_UART_Transmit(&huart1, dataToSend, length, 0xFFFF);
+//}
+//void ANO_DT_Send_Status(float angle_rol, float angle_pit, float angle_yaw, int32_t alt, uint8_t fly_model, uint8_t armed)
+//{
+//	uint8_t _cnt=0;
+//	__IO int16_t _temp;
+//	__IO int32_t _temp2 = alt;
+//	
+//	data_to_send[_cnt++]=0xAA;
+//	data_to_send[_cnt++]=0xAA;
+//	data_to_send[_cnt++]=0x01;
+//	data_to_send[_cnt++]=0;
+//	
+//	_temp = (int)(angle_rol*100);
+//	data_to_send[_cnt++]=BYTE1(_temp);
+//	data_to_send[_cnt++]=BYTE0(_temp);
+//	_temp = (int)(angle_pit*100);
+//	data_to_send[_cnt++]=BYTE1(_temp);
+//	data_to_send[_cnt++]=BYTE0(_temp);
+//	_temp = (int)(angle_yaw*100);
+//	data_to_send[_cnt++]=BYTE1(_temp);
+//	data_to_send[_cnt++]=BYTE0(_temp);
+//	
+//	data_to_send[_cnt++]=BYTE3(_temp2);
+//	data_to_send[_cnt++]=BYTE2(_temp2);
+//	data_to_send[_cnt++]=BYTE1(_temp2);
+//	data_to_send[_cnt++]=BYTE0(_temp2);
+//	
+//	data_to_send[_cnt++] = fly_model;
+//	
+//	data_to_send[_cnt++] = armed;
+//	
+//	data_to_send[3] = _cnt-4;
+//	
+//	uint8_t sum = 0;
+//	for(uint8_t i=0;i<_cnt;i++)
+//		sum += data_to_send[i];
+//	data_to_send[_cnt++]=sum;
+//	
+//	ANO_DT_Send_Data(data_to_send, _cnt);
+//}
+//void ANO_DT_Send_Senser(int16_t a_x,int16_t a_y,int16_t a_z,int16_t g_x,int16_t g_y,int16_t g_z,int16_t m_x,int16_t m_y,int16_t m_z,int32_t bar)
+//{
+//	uint8_t _cnt=0;
+//	__IO int16_t _temp;
+//	
+//	data_to_send[_cnt++]=0xAA;
+//	data_to_send[_cnt++]=0xAA;
+//	data_to_send[_cnt++]=0x02;
+//	data_to_send[_cnt++]=0;
+//	
+//	_temp = a_x;
+//	data_to_send[_cnt++]=BYTE1(_temp);
+//	data_to_send[_cnt++]=BYTE0(_temp);
+//	_temp = a_y;
+//	data_to_send[_cnt++]=BYTE1(_temp);
+//	data_to_send[_cnt++]=BYTE0(_temp);
+//	_temp = a_z;	
+//	data_to_send[_cnt++]=BYTE1(_temp);
+//	data_to_send[_cnt++]=BYTE0(_temp);
+//	
+//	_temp = g_x;	
+//	data_to_send[_cnt++]=BYTE1(_temp);
+//	data_to_send[_cnt++]=BYTE0(_temp);
+//	_temp = g_y;	
+//	data_to_send[_cnt++]=BYTE1(_temp);
+//	data_to_send[_cnt++]=BYTE0(_temp);
+//	_temp = g_z;	
+//	data_to_send[_cnt++]=BYTE1(_temp);
+//	data_to_send[_cnt++]=BYTE0(_temp);
+//	
+//	_temp = m_x;	
+//	data_to_send[_cnt++]=BYTE1(_temp);
+//	data_to_send[_cnt++]=BYTE0(_temp);
+//	_temp = m_y;	
+//	data_to_send[_cnt++]=BYTE1(_temp);
+//	data_to_send[_cnt++]=BYTE0(_temp);
+//	_temp = m_z;	
+//	data_to_send[_cnt++]=BYTE1(_temp);
+//	data_to_send[_cnt++]=BYTE0(_temp);
+//	
+//	data_to_send[3] = _cnt-4;
+//	
+//	uint8_t sum = 0;
+//	for(uint8_t i=0;i<_cnt;i++)
+//		sum += data_to_send[i];
+//	data_to_send[_cnt++] = sum;
+//	
+//	ANO_DT_Send_Data(data_to_send, _cnt);
+//}
+//下面与获取角度放在循环里即可
+//	ANO_DT_Send_Status(Roll, Pitch, Yaw, 1, 1, 1);
+//	ANO_DT_Send_Senser(Accel_X,Accel_Y,Accel_Z,Gyro_X,Gyro_Y,Gyro_Z,1,1,1,0);
 //------------------End of File----------------------------

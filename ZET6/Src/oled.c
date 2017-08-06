@@ -7,7 +7,6 @@
 
 
 uint8_t OLED_GRAM[128][8];	 
-
 //¸üÐÂÏÔ´æµ½LCD		 
 void OLED_Refresh_Gram(void)
 {	    

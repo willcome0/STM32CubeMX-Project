@@ -64,70 +64,104 @@ void SystemClock_Config(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
-/***********上位机支持***************/
-
-void usart1_send_char(uint8_t Data)
-{   	
-	while((huart1.Instance->SR & ((uint16_t)0x0040)) == ((uint16_t)0)); //循环发送,直到发送完毕。详情看标准固件库中的USART_GetFlagStatus函数
-	huart1.Instance->DR = (Data & (uint16_t)0x01FF); //串口1发送字符
-//std库的话USART1->SR/DR
-} 
-void usart1_niming_report(uint8_t fun, uint8_t *data, uint8_t len)
+#define BYTE0(dwTemp)       (*(char *)(&dwTemp))         //0-7位
+#define BYTE1(dwTemp)       (*((char *)(&dwTemp) + 1))  //8-15位
+#define BYTE2(dwTemp)       (*((char *)(&dwTemp) + 2))  //16-23位
+#define BYTE3(dwTemp)       (*((char *)(&dwTemp) + 3))  //24-31位
+uint8_t data_to_send[50];	//发送数据缓存
+void ANO_DT_Send_Data(uint8_t *dataToSend , uint8_t length)
 {
-	uint8_t send_buf[32];
-	uint8_t i;
-	if(len>28)return;	//最多28字节数据 
-	send_buf[len+3]=0;	//校验数置零
-	send_buf[0]=0X88;	//帧头
-	send_buf[1]=fun;	//功能字
-	send_buf[2]=len;	//数据长度
-	for(i=0;i<len;i++)send_buf[3+i]=data[i];			//复制数据
-	for(i=0;i<len+3;i++)send_buf[len+3]+=send_buf[i];	//计算校验和	
-	for(i=0;i<len+4;i++)usart1_send_char(send_buf[i]);	//发送数据到串口1 
+//	Usart2_Send(data_to_send, length);
+	HAL_UART_Transmit(&huart1, dataToSend, length, 0xFFFF);
 }
-void mpu6050_send_data(short aacx,short aacy,short aacz,short gyrox,short gyroy,short gyroz)
+void ANO_DT_Send_Status(float angle_rol, float angle_pit, float angle_yaw, int32_t alt, uint8_t fly_model, uint8_t armed)
 {
-	uint8_t tbuf[12]; 
-	tbuf[0]=(aacx>>8)&0XFF;
-	tbuf[1]=aacx&0XFF;
-	tbuf[2]=(aacy>>8)&0XFF;
-	tbuf[3]=aacy&0XFF;
-	tbuf[4]=(aacz>>8)&0XFF;
-	tbuf[5]=aacz&0XFF; 
-	tbuf[6]=(gyrox>>8)&0XFF;
-	tbuf[7]=gyrox&0XFF;
-	tbuf[8]=(gyroy>>8)&0XFF;
-	tbuf[9]=gyroy&0XFF;
-	tbuf[10]=(gyroz>>8)&0XFF;
-	tbuf[11]=gyroz&0XFF;
-	usart1_niming_report(0XA1,tbuf,12);//自定义帧,0XA1
-}	
-void usart1_report_imu(short aacx,short aacy,short aacz,short gyrox,short gyroy,short gyroz,short roll,short pitch,short yaw)
+	uint8_t _cnt=0;
+	__IO int16_t _temp;
+	__IO int32_t _temp2 = alt;
+	
+	data_to_send[_cnt++]=0xAA;
+	data_to_send[_cnt++]=0xAA;
+	data_to_send[_cnt++]=0x01;
+	data_to_send[_cnt++]=0;
+	
+	_temp = (int)(angle_rol*100);
+	data_to_send[_cnt++]=BYTE1(_temp);
+	data_to_send[_cnt++]=BYTE0(_temp);
+	_temp = (int)(angle_pit*100);
+	data_to_send[_cnt++]=BYTE1(_temp);
+	data_to_send[_cnt++]=BYTE0(_temp);
+	_temp = (int)(angle_yaw*100);
+	data_to_send[_cnt++]=BYTE1(_temp);
+	data_to_send[_cnt++]=BYTE0(_temp);
+	
+	data_to_send[_cnt++]=BYTE3(_temp2);
+	data_to_send[_cnt++]=BYTE2(_temp2);
+	data_to_send[_cnt++]=BYTE1(_temp2);
+	data_to_send[_cnt++]=BYTE0(_temp2);
+	
+	data_to_send[_cnt++] = fly_model;
+	
+	data_to_send[_cnt++] = armed;
+	
+	data_to_send[3] = _cnt-4;
+	
+	uint8_t sum = 0;
+	for(uint8_t i=0;i<_cnt;i++)
+		sum += data_to_send[i];
+	data_to_send[_cnt++]=sum;
+	
+	ANO_DT_Send_Data(data_to_send, _cnt);
+}
+void ANO_DT_Send_Senser(int16_t a_x,int16_t a_y,int16_t a_z,int16_t g_x,int16_t g_y,int16_t g_z,int16_t m_x,int16_t m_y,int16_t m_z,int32_t bar)
 {
-	uint8_t tbuf[28]; 
-	uint8_t i;
-	for(i=0;i<28;i++)tbuf[i]=0;//清0
-	tbuf[0]=(aacx>>8)&0XFF;
-	tbuf[1]=aacx&0XFF;
-	tbuf[2]=(aacy>>8)&0XFF;
-	tbuf[3]=aacy&0XFF;
-	tbuf[4]=(aacz>>8)&0XFF;
-	tbuf[5]=aacz&0XFF; 
-	tbuf[6]=(gyrox>>8)&0XFF;
-	tbuf[7]=gyrox&0XFF;
-	tbuf[8]=(gyroy>>8)&0XFF;
-	tbuf[9]=gyroy&0XFF;
-	tbuf[10]=(gyroz>>8)&0XFF;
-	tbuf[11]=gyroz&0XFF;	
-	tbuf[18]=(roll>>8)&0XFF;
-	tbuf[19]=roll&0XFF;
-	tbuf[20]=(pitch>>8)&0XFF;
-	tbuf[21]=pitch&0XFF;
-	tbuf[22]=(yaw>>8)&0XFF;
-	tbuf[23]=yaw&0XFF;
-	usart1_niming_report(0XAF,tbuf,28);//飞控显示帧,0XAF
-//	OLED_ShowString(0,  0, "???", 12);//看看是采样间隔，还是采样周期问题
-}  
+	uint8_t _cnt=0;
+	__IO int16_t _temp;
+	
+	data_to_send[_cnt++]=0xAA;
+	data_to_send[_cnt++]=0xAA;
+	data_to_send[_cnt++]=0x02;
+	data_to_send[_cnt++]=0;
+	
+	_temp = a_x;
+	data_to_send[_cnt++]=BYTE1(_temp);
+	data_to_send[_cnt++]=BYTE0(_temp);
+	_temp = a_y;
+	data_to_send[_cnt++]=BYTE1(_temp);
+	data_to_send[_cnt++]=BYTE0(_temp);
+	_temp = a_z;	
+	data_to_send[_cnt++]=BYTE1(_temp);
+	data_to_send[_cnt++]=BYTE0(_temp);
+	
+	_temp = g_x;	
+	data_to_send[_cnt++]=BYTE1(_temp);
+	data_to_send[_cnt++]=BYTE0(_temp);
+	_temp = g_y;	
+	data_to_send[_cnt++]=BYTE1(_temp);
+	data_to_send[_cnt++]=BYTE0(_temp);
+	_temp = g_z;	
+	data_to_send[_cnt++]=BYTE1(_temp);
+	data_to_send[_cnt++]=BYTE0(_temp);
+	
+	_temp = m_x;	
+	data_to_send[_cnt++]=BYTE1(_temp);
+	data_to_send[_cnt++]=BYTE0(_temp);
+	_temp = m_y;	
+	data_to_send[_cnt++]=BYTE1(_temp);
+	data_to_send[_cnt++]=BYTE0(_temp);
+	_temp = m_z;	
+	data_to_send[_cnt++]=BYTE1(_temp);
+	data_to_send[_cnt++]=BYTE0(_temp);
+	
+	data_to_send[3] = _cnt-4;
+	
+	uint8_t sum = 0;
+	for(uint8_t i=0;i<_cnt;i++)
+		sum += data_to_send[i];
+	data_to_send[_cnt++] = sum;
+	
+	ANO_DT_Send_Data(data_to_send, _cnt);
+}
 /* USER CODE END 0 */
 
 int main(void)
@@ -164,7 +198,7 @@ int main(void)
 	OLED_Init();
 	Delay_Config();
 
-	IIC_Init();
+	IIC_Config();
 	MPU6050_initialize();
 	DMP_Init(); 
 	/*===========变量===========*/
@@ -192,34 +226,9 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 	Get_Angle();
-	mpu6050_send_data(Accel_X,Accel_Y,Accel_Z,Gyro_X,Gyro_Y,Gyro_Z);//用自定义帧发送加速度和陀螺仪原始数据
-	usart1_report_imu(Accel_X,Accel_Y,Accel_Z,Gyro_X,Gyro_Y,Gyro_Z,(int)(Roll*100),(int)(Pitch*100),(int)(Yaw*10));
-		Delay_ms(150);
-//		huart1.Instance->DR = ('m' & (uint16_t)0x01FF);
-		{
-//			uint8_t ch[25] = "";
-//			sprintf(ch, "  Pitch: %3.1f       ", Pitch);
-//			OLED_ShowString(0,  0, "???", 12);//看看是采样间隔，还是采样周期问题
-		}
-//		Delay_ms(5);
-//		{
-//			uint8_t ch[25] = "";
-//			sprintf(ch, "  Roll : %3.1f       ", Roll);
-//			OLED_ShowString(0, 13, ch, 12);
-//		}
-//		{
-//			uint8_t ch[25] = "";
-//			sprintf(ch, "  Yaw  : %3.1f       ", Yaw);
-//			OLED_ShowString(0, 26, ch, 12);
-//		}
-//		{
-//			uint8_t ch[25] = "";
-//			sprintf(ch, "  P_Kal: %3.1f       ", Pitch_Kalman);
-//			OLED_ShowString(0, 39, ch, 12);
-//		}
-//		OLED_Refresh_Gram();
+//	ANO_DT_Send_Status(Roll, Pitch, Yaw, 1, 1, 1);
+//	ANO_DT_Send_Senser(Accel_X,Accel_Y,Accel_Z,Gyro_X,Gyro_Y,Gyro_Z,1,1,1,0);
 
-//		printf("TEMP: 是吗\r\n");
 //		switch (GO)
 //		{
 //			case  0:	GO = Main_UI_Con();		break;//主菜单

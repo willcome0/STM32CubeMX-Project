@@ -19,18 +19,18 @@
 **************************************************************************/
 void IIC_Config(void)
 {			
-//	RCC->APB2ENR|=1<<2;//使能PORTA时钟
+	RCC->APB2ENR|=1<<2;//使能PORTA时钟
 //	RCC->APB2ENR|=1<<3;//使能PORTB时钟 	
-//	GPIOA->CRL&=0XFF00FFFF;//PB4/5
-//	GPIOA->CRL|=0X00330000;//推挽输出
-	HAL_GPIO_WritePin(GPIOA, MPU_SCL_Pin|MPU_SDA_Pin, GPIO_PIN_SET);
-	
-	GPIO_InitTypeDef GPIO_InitStruct;
-	
-	GPIO_InitStruct.Pin = MPU_SCL_Pin|MPU_SDA_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+	GPIOA->CRL&=0XFF00FFFF;//PB4/5
+	GPIOA->CRL|=0X00330000;//推挽输出
+//	HAL_GPIO_WritePin(GPIOA, MPU_SCL_Pin|MPU_SDA_Pin, GPIO_PIN_SET);
+//	
+//	GPIO_InitTypeDef GPIO_InitStruct;
+//	
+//	GPIO_InitStruct.Pin = MPU_SCL_Pin|MPU_SDA_Pin;
+//  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+//  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+//  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 	
 
 }

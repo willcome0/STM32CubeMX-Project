@@ -202,10 +202,7 @@ int main(void)
 	MPU6050_initialize();
 	DMP_Init(); 
 	/*===========变量===========*/
-	uint8_t ch[20];
-	uint32_t i;
-	
-	
+
 	
 	
 	/*=========循环前函数=========*/
@@ -225,9 +222,12 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-	Get_Angle();
-//	ANO_DT_Send_Status(Roll, Pitch, Yaw, 1, 1, 1);
-//	ANO_DT_Send_Senser(Accel_X,Accel_Y,Accel_Z,Gyro_X,Gyro_Y,Gyro_Z,1,1,1,0);
+		Get_Angle(1);
+
+		ANO_DT_Send_Status(Roll, Pitch, Yaw, 1, 1, 1);
+		ANO_DT_Send_Senser(Accel_X,Accel_Y,Accel_Z,Gyro_X,Gyro_Y,Gyro_Z,1,1,1,0);
+
+
 
 //		switch (GO)
 //		{

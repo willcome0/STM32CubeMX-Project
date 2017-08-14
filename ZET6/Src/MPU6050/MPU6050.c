@@ -277,7 +277,6 @@ void DMP_Init(void)
 { 
    uint8_t temp[1]={0};
    i2cRead(0x68,0x75,1,temp);
-//	 Flag_Show=1;
 //	 printf("mpu_set_sensor complete ......\r\n");
 	if(temp[0]!=0x68)NVIC_SystemReset();
 	if(!mpu_init())
@@ -302,7 +301,6 @@ void DMP_Init(void)
 	  if(!mpu_set_dmp_state(1));
 //	  	 printf("mpu_set_dmp_state complete ......\r\n");
   }
-//	Flag_Show=0;
 }
 /**************************************************************************
 函数功能：读取MPU6050内置DMP的姿态信息
@@ -315,7 +313,7 @@ void Read_DMP(void)
 	  unsigned long sensor_timestamp;
 		unsigned char more;
 		long quat[4];
-
+//		printf("");
 				dmp_read_fifo(gyro, accel, quat, &sensor_timestamp, &sensors, &more);		
 				if (sensors & INV_WXYZ_QUAT )
 				{    
@@ -350,43 +348,42 @@ int Read_Temperature(void)
 *入口参数：获取角度的算法 1：DMP  2：卡尔曼 3：互补滤波
 *返 回 值：无
 **************************************************************************/
-void Get_Angle(void)
+void Get_Angle(uint8_t flag)
 { 
-	    
+//				float Temp_Accel_X, Temp_Accel_Y, Temp_Accel_Z,
+//							Temp_Gyro_X, Temp_Gyro_Y, Temp_Gyro_Z;
 //	   	Temperature=Read_Temperature();      //===读取MPU6050内置温度传感器数据，近似表示主板温度。
 
-				Read_DMP();                      //===读取加速度、角速度、倾角
-	
+		Read_DMP();                      //===读取加速度、角速度、倾角
+		if(flag)
+		{
 				Gyro_X=(I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_XOUT_H)<<8)+I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_XOUT_L);//陀螺仪
+//				Temp_Gyro_X=Gyro_X;
 				Gyro_Y=(I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_YOUT_H)<<8)+I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_YOUT_L);
+//				Temp_Gyro_Y=Gyro_Y;
 				Gyro_Z=(I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_ZOUT_H)<<8)+I2C_ReadOneByte(devAddr,MPU6050_RA_GYRO_ZOUT_L);
-				
+//				Temp_Gyro_Z=Gyro_Z;
+				 
 				Accel_X=(I2C_ReadOneByte(devAddr,MPU6050_RA_ACCEL_XOUT_H)<<8)+I2C_ReadOneByte(devAddr,MPU6050_RA_ACCEL_XOUT_L);//加速度计
+//				Temp_Accel_X=Accel_X;
 				Accel_Y=(I2C_ReadOneByte(devAddr,MPU6050_RA_ACCEL_YOUT_H)<<8)+I2C_ReadOneByte(devAddr,MPU6050_RA_ACCEL_YOUT_L);
+//				Temp_Accel_Y=Accel_Y;
 				Accel_Z=(I2C_ReadOneByte(devAddr,MPU6050_RA_ACCEL_ZOUT_H)<<8)+I2C_ReadOneByte(devAddr,MPU6050_RA_ACCEL_ZOUT_L);
-				
-//					Angle_Balance=Pitch;             //===更新平衡倾角
-//					Gyro_Balance=gyro[1];            //===更新平衡角速度
-//					Gyro_Turn=gyro[2];               //===更新转向角速度
-//				  Acceleration_Z=accel[2];         //===更新Z轴加速度计
+//				Temp_Accel_Z=Accel_Z;
+		}
 
 
-	
-//		  if(Gyro_Y>32768)  Gyro_Y-=65536;                       //数据类型转换  也可通过short强制类型转换
+		
+//		  if(Gyro_X>32768)  Gyro_X-=65536;                       //数据类型转换  也可通过short强制类型转换
 //			if(Gyro_Z>32768)  Gyro_Z-=65536;
 //	  	if(Accel_X>32768) Accel_X-=65536;
 //		  if(Accel_Z>32768) Accel_Z-=65536;
-//////			Gyro_Balance=-Gyro_Y;                                  //更新平衡角速度//平衡角速度取的是Y向角速度
-//	   	Accel_Y=atan2(Accel_X,Accel_Z)*180/3.1415;                 //计算倾角	
+//////////			Gyro_Balance=-Gyro_Y;                                  //更新平衡角速度//平衡角速度取的是Y向角速度
+//	   	Accel_Y_Cal=atan2(Accel_X,Accel_Z)*180/3.1415;                 //计算倾角	
 //		  Gyro_Y=Gyro_Y/16.4;                                    //Y轴角速度量程转换	
-//			Yijielvbo(Accel_Y,-Gyro_Y);//卡尔曼滤波,得出Pitch_Kalman	//得出的这个误差越来越大   
-			
-			
-			
-			
-//		Yijielvbo(Accel_Y,-Gyro_Y);    //互补滤波
-//			Gyro_Turn=Gyro_Z;                                      //更新转向角速度
-//			Acceleration_Z=Accel_Z;                                //===更新Z轴加速度计	
+//			
+//			Yijielvbo(Accel_Y_Cal,-Gyro_Y);
+
 
 }
 
@@ -408,7 +405,8 @@ void Kalman_Filter(float Accel,float Gyro)
 	PP[0][1] += Pdot[1] * dt;   // =先验估计误差协方差
 	PP[1][0] += Pdot[2] * dt;
 	PP[1][1] += Pdot[3] * dt;
-		
+	
+	
 	Angle_err = Accel - Pitch_Kalman;	//zk-先验估计
 	
 	PCt_0 = C_0 * PP[0][0];

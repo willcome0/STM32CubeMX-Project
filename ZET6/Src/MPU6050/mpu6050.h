@@ -383,7 +383,7 @@ void MPU6050_InitGyro_Offset(void);//³õÊ¼»¯ÍÓÂÝÒÇÆ«ÖÃ
 void DMP_Init(void);
 void Read_DMP(void);
 int Read_Temperature(void);
-
+void Get_Angle(uint8_t flag);
 
 void Kalman_Filter(float Accel,float Gyro);
 void Yijielvbo(float Accel, float Gyro);
